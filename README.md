@@ -4,9 +4,11 @@
 
  ## 1. Requirements
 #### General
-- Python (verified on 3.5.4)
+- Python (verified on 3.6.1)
 
 #### Python Packages
+- numpy
+- sklearn
 
 ## 2. Assignments
 
