@@ -113,3 +113,5 @@ dmypy.json
 # Dataset
 */data/*.gz
 
+# Result reports
+*/result/*

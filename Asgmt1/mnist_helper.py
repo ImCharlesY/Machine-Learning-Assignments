@@ -78,7 +78,7 @@ def get_dataset(gzfdir):
 		finally:
 			None
 			# os.remove(gzfname)
-		return res.reshape((cimg, 1))
+		return res.reshape((cimg, ))
 
 	# URLs for the train image and label data
 	url_train_image = 'http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz'
@@ -95,5 +95,4 @@ def get_dataset(gzfdir):
 	print("Downloading test data ...")
 	test_data = pd.DataFrame(data = loadData(url_test_image, num_test_samples, gzfdir))
 	test_labels = loadLabels(url_test_labels, num_test_samples, gzfdir)
-
-	return train_data, np.ravel(train_labels), test_data, np.ravel(test_labels)
+	return pd.concat([train_data, test_data], ignore_index = True), np.hstack((train_labels, test_labels))
