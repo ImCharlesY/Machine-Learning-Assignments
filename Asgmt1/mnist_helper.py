@@ -9,6 +9,7 @@ Date            : 2018-10-06
 '''
 import gzip
 import numpy as np
+import pandas as pd
 import os
 import shutil
 import struct
@@ -84,7 +85,7 @@ def get_dataset(gzfdir):
 	url_train_labels = 'http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz'
 	num_train_samples = 60000
 	print("Downloading train data ...")
-	train_data = loadData(url_train_image, num_train_samples, gzfdir)
+	train_data = pd.DataFrame(data = loadData(url_train_image, num_train_samples, gzfdir))
 	train_labels = loadLabels(url_train_labels, num_train_samples, gzfdir)
 
 	# URLs for the test image and label data
@@ -92,7 +93,7 @@ def get_dataset(gzfdir):
 	url_test_labels = 'http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz'
 	num_test_samples = 10000
 	print("Downloading test data ...")
-	test_data = loadData(url_test_image, num_test_samples, gzfdir)
+	test_data = pd.DataFrame(data = loadData(url_test_image, num_test_samples, gzfdir))
 	test_labels = loadLabels(url_test_labels, num_test_samples, gzfdir)
 
-	return np.hstack((train_data, train_labels)), np.hstack((test_data, test_labels))
+	return train_data, np.ravel(train_labels), test_data, np.ravel(test_labels)
