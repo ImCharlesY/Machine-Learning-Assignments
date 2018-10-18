@@ -95,4 +95,5 @@ def get_dataset(gzfdir):
 	print("Downloading test data ...")
 	test_data = pd.DataFrame(data = loadData(url_test_image, num_test_samples, gzfdir))
 	test_labels = loadLabels(url_test_labels, num_test_samples, gzfdir)
-	return pd.concat([train_data, test_data], ignore_index = True), np.hstack((train_labels, test_labels))
+	# return pd.concat([train_data, test_data], ignore_index = True), np.hstack((train_labels, test_labels))
+	return train_data, train_labels, test_data, test_labels
