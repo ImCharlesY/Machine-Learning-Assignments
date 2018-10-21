@@ -28,6 +28,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 
 from util import mnist_helper
+from util import transform
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--train_size', type = float, default = .9, help = "Size of train dataset.")
@@ -50,6 +51,9 @@ train_x, train_y, test_x, test_y = mnist_helper.get_dataset('./data/')
 train_x, train_y = shuffle(train_x, train_y, random_state = 2333)
 # train_x, test_x, train_y, test_y = train_test_split(data_x, data_y, train_size = args.train_size, shuffle = True, random_state = 2333)
 
+# Expand training dataset
+train_x, train_y = transform.affine_transform(train_x.values.reshape((len(train_x), 28, 28)), train_y)
+
 # Scaler and decomposition
 if args.std_scaler:
 	scaler = StandardScaler()
@@ -67,8 +71,8 @@ print('Shape of test dataset: {}'.format(test_x.shape))
 print('\nCreate classifier ...\n' + '*' * 50)
 classifiers = [
 	SVC(C = args.svm_c, kernel = args.svm_kernel, gamma = args.svm_gamma, degree = args.svm_degree, coef0 = args.svm_coef0),
-	LogisticRegression(C = args.lr_c, solver = args.lr_solver, max_iter = 1000),
-	KNeighborsClassifier(n_neighbors = args.knn_n)
+	# LogisticRegression(C = args.lr_c, solver = args.lr_solver, max_iter = 1000),
+	# KNeighborsClassifier(n_neighbors = args.knn_n)
 ]
 
 # Start training

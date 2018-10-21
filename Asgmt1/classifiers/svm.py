@@ -38,11 +38,14 @@ class svm:
 
         self.alpha = None
         self.bias = None
+        self.tmp_alpha = None
+        self.tmp_bias = None
+        self.E_cache = None
 
         np.random.seed(random_state)
 
     """
-    Define kernel functions:
+        Define kernel functions:
     """
     def kernel_linear(self, x, xk):
         return np.dot(x, xk)
@@ -55,7 +58,7 @@ class svm:
             return np.exp(- self.gamma * (np.linalg.norm(x - xk, axis = 1) ** 2))
 
     """
-    Define some help functions:
+        Define some help functions:
     """
     # Calculate limits of \alpha
     def calc_LH(self, C, alpha_old_j, alpha_old_i, y_j, y_i):
@@ -78,17 +81,34 @@ class svm:
         b2 = b - E_j - y_i * (alpha_i - alpha_old_i) * (kernel(X_i, X_j)) - y_j * (alpha_j - alpha_old_j) * (kernel(X_j, X_j))
 
         if 0 < alpha_i < self.C:
-            return b1
+            tmp_bias = b1
         elif 0 < alpha_j < self.C:
-            return b2
+            tmp_bias = b2
         else:
-            return (b1 + b2)/2
+            tmp_bias = (b1 + b2)/2
+        self.E_cache -= self.tmp_bias - tmp_bias # Update error cache
+        return tmp_bias
+
+    # given \alpha_i, generate the best \alpha_j
+    def generate_j(self, i, Ei):
+        self.E_cache[i] = Ei
+
+        #  choose the alpha that gives the maximum delta E
+        delta_Es = np.abs(self.E_cache - Ei)
+        j = np.argmax(delta_Es)
+        Ej = self.E_cache[j]
+
+        return j, Ej
 
     """
-    Core functions:
+        Core functions:
     """
-    # fit a binary classifier using SMO
-    def fit_binary(self, X, y):
+    # SMO inner loop
+    def smo_inner(self, X, y, i, kernel):
+        """
+        The inner loop of SMO algorithm
+        :return: whether changed alpha values. 0 = unchanged, 1 = changed (go to function smo to see why)
+        """
 
         # Sequential Minimal Optimization (SMO):
         # 1. Initialize all \alpha to zero
@@ -98,60 +118,77 @@ class svm:
         # 5. Update bias
         # 6. Repeat 2-5 until stop
 
+        # Compute prediction errors
+        E_i = self.calc_e(X[i], y[i], self.tmp_alpha, X, y, self.tmp_bias, kernel) 
+
+        if ((y[i] * E_i < -1e-5) and (self.tmp_alpha[i] < self.C)) or \
+            ((y[i] * E_i > 1e-5) and (self.tmp_alpha[i] > 0)):
+            j, E_j = self.generate_j(i, E_i)
+
+            # Record some variables
+            X_i, X_j, y_i, y_j = X[i,:].copy(), X[j,:].copy(), y[i].copy(), y[j].copy()
+            alpha_old_j, alpha_old_i = self.tmp_alpha[j].copy(), self.tmp_alpha[i].copy()
+
+            # Compute the upper and lower limits of \alpha
+            (L, H) = self.calc_LH(self.C, alpha_old_j, alpha_old_i, y_j, y_i)
+            if L == H:
+                return 0
+
+            # Calculate the value of \eta
+            eta = kernel(X_i, X_i) + kernel(X_j, X_j) - 2 * kernel(X_i, X_j)
+            if eta <= 0:
+                return 0
+
+            # Update \alpha values
+            self.tmp_alpha[j] = alpha_old_j + float(y_j * (E_i - E_j)) / eta
+            self.tmp_alpha[j] = min(self.tmp_alpha[j], H)
+            self.tmp_alpha[j] = max(self.tmp_alpha[j], L)
+            # Update prediction error
+            self.E_cache[j] = self.calc_e(X_j, y_j, self.tmp_alpha, X, y, self.tmp_bias, kernel)   
+            if abs(self.tmp_alpha[j] - alpha_old_j) < 0.00001:
+                # j not moving enough
+                return 0
+            self.tmp_alpha[i] = alpha_old_i + y_i * y_j * (alpha_old_j - self.tmp_alpha[j])
+            # Update prediction error
+            self.E_cache[i] = self.calc_e(X_i, y_i, self.tmp_alpha, X, y, self.tmp_bias, kernel) 
+
+            # Compute bias value
+            self.tmp_bias = self.calc_b(self.tmp_bias, X_i, X_j, y_i, y_j, E_i, E_j, self.tmp_alpha[i], self.tmp_alpha[j], alpha_old_i, alpha_old_j, kernel)
+
+            return 1
+
+        else:
+            return 0
+
+    # fit a binary classifier using SMO
+    def fit_binary(self, X, y):
+
         n_sample, n_feature = X.shape[0], X.shape[1]
         kernel = self.kernels[self.kernel]
 
-        # Initialization
-        alpha = np.zeros((n_sample))
-        bias = 0
-        it = 0
+        iter = 0
+        self.tmp_alpha = np.zeros((n_sample))
+        self.tmp_bias = 0
 
-        while True:
-            it += 1
-            alpha_old = np.copy(alpha)
+        entire_set = True
+        alpha_pairs_changed = 0 
 
-            for j in range(0, n_sample):
-                # Randomly select i that is not equal to j
-                i = j
-                while (j == i):
-                    i = np.random.randint(0, n_sample) 
-
-                # Record some variables
-                X_i, X_j, y_i, y_j = X[i,:], X[j,:], y[i], y[j]
-                alpha_old_j, alpha_old_i = alpha[j], alpha[i]
-
-                # Compute the upper and lower limits of \alpha
-                (L, H) = self.calc_LH(self.C, alpha_old_j, alpha_old_i, y_j, y_i)
-                if L == H:
-                    continue
-
-                # Calculate the value of \eta
-                eta = kernel(X_i, X_i) + kernel(X_j, X_j) - 2 * kernel(X_i, X_j)
-                if eta <= 0:
-                    continue
-
-                # Compute prediction errors
-                E_i = self.calc_e(X_i, y_i, alpha, X, y, bias, kernel)
-                E_j = self.calc_e(X_j, y_j, alpha, X, y, bias, kernel)
-
-                # Update \alpha values
-                alpha[j] = alpha_old_j + float(y_j * (E_i - E_j)) / eta
-                alpha[j] = min(alpha[j], H)
-                alpha[j] = max(alpha[j], L)
-                alpha[i] = alpha_old_i + y_i * y_j * (alpha_old_j - alpha[j])
-
-                # Compute bias value
-                bias = self.calc_b(bias, X_i, X_j, y_i, y_j, E_i, E_j, alpha[i], alpha[j], alpha_old_i, alpha_old_j, kernel)
-
-            # If \alpha varies slightly, stop iteration
-            if np.linalg.norm(alpha - alpha_old) < self.epsilon:
-                break
-
-            if it >= self.max_iter:
-                print("Iteration number exceeded the max of %n_feature iterations" % (self.max_iter))
-                return it
-
-        return it, alpha, bias
+        while (iter < self.max_iter) and ((alpha_pairs_changed > 0) or entire_set):
+            alpha_pairs_changed = 0
+            if entire_set:  # go over all
+                for i in range(n_sample):
+                    alpha_pairs_changed += self.smo_inner(X, y, i, kernel)
+                iter += 1
+            else:  # go over non-bound (railed) alphas
+                non_bound_i = np.nonzero((self.tmp_alpha > 0) * (self.tmp_alpha < self.C))[0]
+                for i in non_bound_i:
+                    alpha_pairs_changed += self.smo_inner(X, y, i, kernel)
+                iter += 1
+            if entire_set:
+                entire_set = False  # toggle entire set loop
+            elif alpha_pairs_changed == 0:
+                entire_set = True
+        return iter, self.tmp_alpha, self.tmp_bias
 
     def fit(self, features, target):
         label_en = self.lben.fit_transform(target.flatten())
@@ -185,6 +222,7 @@ class svm:
 
             # Fitting each classifier
             for n_class in range(self.num_classes):
+                self.E_cache = (-label_matrix[n_class,]).astype('float64')
                 it, alpha, bias = self.fit_binary(features, label_matrix[n_class,])
                 self.alpha.append(alpha)
                 self.bias.append(bias)
@@ -194,6 +232,7 @@ class svm:
 
         else:
             self.y = label_en
+            self.E_cache = (-label_en).astype('float64')
             it, self.alpha, self.bias = self.fit_binary(features, label_en)
 
     def predict_binary(self, test_features, train_features, train_labels, alpha, bias, kernel):
@@ -217,7 +256,6 @@ class svm:
                 tmpmin = np.abs(predictions[n_class,].min())
                 predictions[n_class,] += tmpmin
             predictions /= predictions.sum(axis = 1)[:, None]
-            # print(self.alpha)
             return predictions.T
         # else if binary class
         else:
