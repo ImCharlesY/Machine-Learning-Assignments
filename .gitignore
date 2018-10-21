@@ -109,9 +109,3 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
-
-# Dataset
-*/data/*.gz
-
-# Result reports
-*/result/*

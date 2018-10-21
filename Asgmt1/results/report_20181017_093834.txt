@@ -1,0 +1,40 @@
+Arguments: 
+	std_scaler: False,
+	pca_percent: 0.8,
+	svm_c: 5.0,
+	svm_kernel: rbf,
+	svm_gamma: 0.05,
+	lr_solver: lbfgs,
+	knn_n: 5 
+--------------------------------------------------
+Classification report for classifier KNeighborsClassifier(algorithm='auto', leaf_size=30, metric='minkowski',
+           metric_params=None, n_jobs=1, n_neighbors=5, p=2,
+           weights='uniform'):
+             precision    recall  f1-score   support
+
+          0       0.98      0.99      0.99       980
+          1       0.99      0.99      0.99      1135
+          2       0.98      0.98      0.98      1032
+          3       0.98      0.98      0.98      1010
+          4       0.98      0.98      0.98       982
+          5       0.98      0.98      0.98       892
+          6       0.98      0.99      0.98       958
+          7       0.97      0.98      0.98      1028
+          8       0.98      0.97      0.98       974
+          9       0.98      0.97      0.97      1009
+
+avg / total       0.98      0.98      0.98     10000
+
+
+Accuracy: 0.9803
+Confusion matrix:
+[[ 973    2    1    0    0    0    2    1    1    0]
+ [   0 1128    2    0    0    1    2    1    0    1]
+ [   4    1 1007    4    2    0    0    6    7    1]
+ [   0    0    2  991    2    8    0    2    5    0]
+ [   1    1    4    0  960    0    4    0    1   11]
+ [   2    0    0    8    3  872    6    1    0    0]
+ [   6    2    2    0    1    2  944    0    1    0]
+ [   0    5   10    0    1    0    0 1004    2    6]
+ [   2    0    1    5    0    4    2    7  948    5]
+ [   2    3    1    5    8    2    0    9    3  976]]

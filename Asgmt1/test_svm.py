@@ -24,14 +24,18 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
 from util import mnist_helper
-from classifiers.lr import lr
+from classifiers.svm import svm
+
+np.set_printoptions(threshold = np.nan)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_size', type = float, default = .1, help = "Size of data dataset.")
 parser.add_argument('--std_scaler', type = lambda x: (str(x).lower() == 'true'), default = False, help = "Whether to apply standard scaler before PCA.")
 parser.add_argument('--pca_percent', type = float, default = .8, help = "How much variance in percent to retain by setting number of components in PCA.")
-parser.add_argument('--steps', type = int, default = 3000, help = "Maximum number of iter steps.")
-parser.add_argument('--lr', type = float, default = 5e-5, help = "Learning rate.")
+parser.add_argument('--max_iter', type = int, default = 3000, help = "Maximum number of iter steps.")
+parser.add_argument('--svm_c', type = float, default = 5.0, help = "Parameter C for svm classifier.")
+parser.add_argument('--svm_kernel', default = 'rbf', help = "Kernel used in svm classifier.")
+parser.add_argument('--svm_gamma', type = float, default = .05, help = "Parameter gamma for svm classifier.")
 parser.add_argument('--output', type = lambda x: (str(x).lower() == 'true'), default = False, help = "Whether to print the result report to file.")
 parser.add_argument('--outfile', default = './result/report.txt', help = "File to save the result report.")
 args = parser.parse_args()
@@ -63,7 +67,7 @@ print('Shape of test dataset: {}'.format(test_x.shape))
 
 # Create classifiers
 print('\nCreate classifier ...\n' + '*' * 50)
-clf = lr(num_steps = args.steps, learning_rate = args.lr)
+clf = svm(max_iter = args.max_iter, C = args.svm_c, kernel = args.svm_kernel, gamma = args.svm_gamma)
 
 # Start fitting
 print('\nStart fitting ...\n' + '*' * 50)
@@ -87,9 +91,11 @@ print("""Arguments:
 	data_size: {0},
 	std_scaler: {1},
 	pca_percent: {2},
-	num_steps: {3},
-	learning_rate: {4}
-	 """.format(args.data_size, args.std_scaler, args.pca_percent, args.steps, args.lr))
+	max_iter: {3},
+	svm_C: {4},
+	svm_kernel: {5},
+	svm_gamma: {6}
+	 """.format(args.data_size, args.std_scaler, args.pca_percent, args.max_iter, args.svm_c, args.svm_kernel, args.svm_gamma))
 print('-' * 50)
 print('Classification report for classifier :\n%s\n'
       % (metrics.classification_report(expected, predicted)))

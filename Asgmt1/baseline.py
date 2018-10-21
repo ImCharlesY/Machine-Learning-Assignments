@@ -27,19 +27,22 @@ from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 
-import mnist_helper
+from util import mnist_helper
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--train_size', type = float, default = .9, help = "Size of train dataset.")
 parser.add_argument('--std_scaler', type = lambda x: (str(x).lower() == 'true'), default = False, help = "Whether to apply standard scaler before PCA.")
 parser.add_argument('--pca_percent', type = float, default = .8, help = "How much variance in percent to retain by setting number of components in PCA.")
 parser.add_argument('--svm_c', type = float, default = 5.0, help = "Parameter C for svm classifier.")
-parser.add_argument('--svm_kernel', default = 'rbf', help = "Kernel used in svm classifier.")
+parser.add_argument('--svm_kernel', default = 'rbf', choices = ['rbf', 'poly', 'rbf'],help = "Kernel used in svm classifier.")
 parser.add_argument('--svm_gamma', type = float, default = .05, help = "Parameter gamma for svm classifier.")
+parser.add_argument('--svm_degree', type = float, default = 9, help = "Parameter degree for polynomial kernel in svm classifier.")
+parser.add_argument('--svm_coef0', type = float, default = 1, help = "Parameter coef0 for polynomial kernel in svm classifier.")
 parser.add_argument('--lr_solver', default = 'lbfgs', help = "Solver for logistic regression.")
+parser.add_argument('--lr_c', type = float, default = 1.0, help = "Parameter C for svm classifier.")
 parser.add_argument('--knn_n', type = int, default = 5, help = "Number of neighbors for knn.")
 parser.add_argument('--output', type = lambda x: (str(x).lower() == 'true'), default = False, help = "Whether to print the result report to file.")
-parser.add_argument('--outfile', default = './result/report.txt', help = "File to save the result report.")
+parser.add_argument('--outfile', default = './results/report.txt', help = "File to save the result report.")
 args = parser.parse_args()
 
 # Get dataset and split into train and test
@@ -63,8 +66,8 @@ print('Shape of test dataset: {}'.format(test_x.shape))
 # Create classifiers
 print('\nCreate classifier ...\n' + '*' * 50)
 classifiers = [
-	SVC(C = args.svm_c, kernel = args.svm_kernel, gamma = args.svm_gamma),
-	LogisticRegression(solver = args.lr_solver),
+	SVC(C = args.svm_c, kernel = args.svm_kernel, gamma = args.svm_gamma, degree = args.svm_degree, coef0 = args.svm_coef0),
+	LogisticRegression(C = args.lr_c, solver = args.lr_solver, max_iter = 1000),
 	KNeighborsClassifier(n_neighbors = args.knn_n)
 ]
 
@@ -88,6 +91,10 @@ if args.output:
 	sys.stdout = open(os.path.splitext(args.outfile)[0] + datetime.now().strftime("_%Y%m%d_%H%M%S") + os.path.splitext(args.outfile)[-1], 'wt')
 for clf in classifiers:
 	predicted = clf.predict(test_x)
+	print("""Parameters: 
+		std_scaler: {0},
+		pca_percent: {1}
+		 """.format(args.std_scaler, args.pca_percent))
 	print('-' * 50)
 	print('Classification report for classifier %s:\n%s\n'
 	      % (clf, metrics.classification_report(expected, predicted)))

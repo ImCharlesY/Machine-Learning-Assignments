@@ -81,7 +81,7 @@ class lr:
 			raise "Call prediction before fitting."
 
 		if self.weights.ndim == 1 and features.shape[1] != self.weights.size or self.weights.ndim == 2 and features.shape[1] != self.weights.shape[1]:
-			raise "The dimension of the input data is not matched to the pre-train model."
+			raise "The dimension of the input data is not matched to the pre-trained model."
 
 		# If multiclass, vote
 		if self.weights.ndim == 2:

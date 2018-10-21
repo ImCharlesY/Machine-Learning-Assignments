@@ -28,7 +28,7 @@ from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 
-import mnist_helper
+from util import mnist_helper
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--train_size', type = float, default = .9, help = "Size of train dataset.")
