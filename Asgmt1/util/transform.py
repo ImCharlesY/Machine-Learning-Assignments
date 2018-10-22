@@ -1,10 +1,9 @@
 #!/usr/bin/env
 # -*- coding: utf-8 -*-
 '''
-Script Name     : baseline
+Script Name     : transform
 Author          : Charles Young
 Python Version  : Python 3.6.1
-Requirements    : (Please check document: requirements.txt or use command "pip install -r requirements.txt")
 Date            : 2018-10-06
 '''
 

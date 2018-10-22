@@ -4,7 +4,6 @@
 Script Name     : lr
 Author          : Charles Young
 Python Version  : Python 3.6.1
-Requirements    : (Please check document: requirements.txt or use command "pip install -r requirements.txt")
 Date            : 2018-10-17
 '''
 
@@ -19,7 +18,6 @@ class lr:
 		self.lben = LabelEncoder()
 		self.num_classes = None
 		self.weights = None
-		self.multclass = False
 
 	def sigmoid(self, scores):
 		return 1 / (1 + np.exp(-scores))
@@ -36,10 +34,7 @@ class lr:
 		labelSet = np.unique(label_en)
 		self.num_classes = len(labelSet)
 
-		if self.num_classes > 2:
-			self.multclass = True
-
-		if self.multclass: # One vs Rest
+		if self.num_classes > 2: # One vs Rest
 			self.weights = np.zeros((self.num_classes, features.shape[1]))
 
 			def labelBinarize(labels, labelSet):

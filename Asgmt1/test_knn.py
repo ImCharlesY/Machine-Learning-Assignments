@@ -1,7 +1,7 @@
 #!/usr/bin/env
 # -*- coding: utf-8 -*-
 '''
-Script Name     : test_lr
+Script Name     : test_knn
 Author          : Charles Young
 Python Version  : Python 3.6.1
 Date            : 2018-10-17
@@ -23,16 +23,17 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 
 from util import mnist_helper
-from classifiers.lr import lr
+from classifiers.knn import KNN
+
+np.set_printoptions(threshold = np.nan)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--data_size', type = float, default = .1, nargs='?', help = "Size of data dataset, default = 0.1")
+parser.add_argument('--data_size', type = float, default = .1, nargs='?', help = "Size of data dataset. Default = 0.1")
 parser.add_argument('--normalize', dest = 'normal', action = 'store_const', const = True, help = "Whether to normalize the features.")
-parser.add_argument('--pca_percent', type = float, default = .8, nargs='?', help = "How much variance in percent to retain by setting number of components in PCA, default = 0.8")
-parser.add_argument('--steps', type = int, default = 3000, nargs='?', help = "Maximum number of iter steps, default = 3000")
-parser.add_argument('--lr', type = float, default = 5e-5, nargs='?', help = "Learning rate, default = 5e-5")
+parser.add_argument('--pca_percent', type = float, default = .8, nargs='?', help = "How much variance in percent to retain by setting number of components in PCA. Default = 0.8")
+parser.add_argument('--knn_n', type = int, default = 5, nargs='?', help = "Number of neighbors for knn. Default = 5")
 parser.add_argument('--output', dest = 'output', action = 'store_const', const = True, help = "Whether to print the result report to file.")
-parser.add_argument('--outfile', default = './results/report.txt', nargs='?', help = "File to save the result report, default = './results/report.txt'")
+parser.add_argument('--outfile', default = './results/report.txt', nargs='?', help = "File to save the result report. Default = './results/report.txt'")
 args = parser.parse_args()
 
 # Get dataset and split into train and test
@@ -53,7 +54,7 @@ if args.normal:
 	train_x = scaler.fit_transform(train_x)
 	test_x = scaler.transform(test_x)
 
-pca = PCA(args.pca_percent, whiten = True)
+pca = PCA(args.pca_percent)
 train_x = pca.fit_transform(train_x)
 test_x = pca.transform(test_x)
 
@@ -62,7 +63,7 @@ print('Shape of test dataset: {}'.format(test_x.shape))
 
 # Create classifiers
 print('\nCreate classifier ...\n' + '*' * 50)
-clf = lr(num_steps = args.steps, learning_rate = args.lr)
+clf = KNN(n_neighbors = args.knn_n)
 
 # Start fitting
 print('\nStart fitting ...\n' + '*' * 50)
@@ -86,9 +87,8 @@ print("""Arguments:
 	data_size: {0},
 	normalize: {1},
 	pca_percent: {2},
-	num_steps: {3},
-	learning_rate: {4}
-	 """.format(args.data_size, args.normal, args.pca_percent, args.steps, args.lr))
+	knn_n: {3}
+	 """.format(args.data_size, args.normal, args.pca_percent, args.knn_n))
 print('-' * 50)
 print('Classification report for classifier :\n%s\n'
       % (metrics.classification_report(expected, predicted)))

@@ -4,7 +4,6 @@
 Script Name     : mnist_helper
 Author          : Charles Young
 Python Version  : Python 3.6.1
-Requirements    : (Please check document: requirements.txt or use command "pip install -r requirements.txt")
 Date            : 2018-10-06
 '''
 import gzip

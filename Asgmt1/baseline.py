@@ -4,7 +4,6 @@
 Script Name     : baseline
 Author          : Charles Young
 Python Version  : Python 3.6.1
-Requirements    : (Please check document: requirements.txt or use command "pip install -r requirements.txt")
 Date            : 2018-10-06
 '''
 print(__doc__)
@@ -32,18 +31,18 @@ from util import transform
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--train_size', type = float, default = .9, help = "Size of train dataset.")
-parser.add_argument('--std_scaler', type = lambda x: (str(x).lower() == 'true'), default = False, help = "Whether to apply standard scaler before PCA.")
-parser.add_argument('--pca_percent', type = float, default = .8, help = "How much variance in percent to retain by setting number of components in PCA.")
-parser.add_argument('--svm_c', type = float, default = 5.0, help = "Parameter C for svm classifier.")
-parser.add_argument('--svm_kernel', default = 'rbf', choices = ['rbf', 'poly', 'rbf'],help = "Kernel used in svm classifier.")
-parser.add_argument('--svm_gamma', type = float, default = .05, help = "Parameter gamma for svm classifier.")
-parser.add_argument('--svm_degree', type = float, default = 9, help = "Parameter degree for polynomial kernel in svm classifier.")
-parser.add_argument('--svm_coef0', type = float, default = 1, help = "Parameter coef0 for polynomial kernel in svm classifier.")
-parser.add_argument('--lr_solver', default = 'lbfgs', help = "Solver for logistic regression.")
-parser.add_argument('--lr_c', type = float, default = 1.0, help = "Parameter C for svm classifier.")
-parser.add_argument('--knn_n', type = int, default = 5, help = "Number of neighbors for knn.")
-parser.add_argument('--output', type = lambda x: (str(x).lower() == 'true'), default = False, help = "Whether to print the result report to file.")
-parser.add_argument('--outfile', default = './results/report.txt', help = "File to save the result report.")
+parser.add_argument('--normalize', dest = 'normal', action = 'store_const', const = True, help = "Whether to normalize the features.")
+parser.add_argument('--pca_percent', type = float, default = .8, nargs='?', help = "How much variance in percent to retain by setting number of components in PCA. Default = 0.8")
+parser.add_argument('--svm_c', type = float, default = 5.0, nargs='?', help = "Penalty parameter C of the error term. Default = 5.0")
+parser.add_argument('--svm_kernel', default = 'rbf', choices = ['linear', 'poly', 'rbf'], nargs='?', help = "Specifies the kernel type to be used in the algorithm. Default = rbf")
+parser.add_argument('--svm_gamma', type = float, default = .025, nargs='?', help = "Kernel coefficient for ‘rbf’ and ‘poly’. Default = 0.025")
+parser.add_argument('--svm_degree', type = float, default = 9, nargs='?', help = "Degree of the polynomial kernel function (‘poly’). Ignored by all other kernels. Default = 9")
+parser.add_argument('--svm_coef0', type = float, default = 1, nargs='?', help = "Independent term of the polynomial kernel function (‘poly’). Ignored by all other kernels. Default = 1")
+parser.add_argument('--lr_solver', default = 'lbfgs', choices = ['lbfgs'], nargs='?', help = "Solver for logistic regression. Default = lbfgs")
+parser.add_argument('--lr_c', type = float, default = 1.0, nargs='?', help = "Parameter C for svm classifier. Default = 1.0")
+parser.add_argument('--knn_n', type = int, default = 5, nargs='?', help = "Number of neighbors for knn. Default = 5")
+parser.add_argument('--output', dest = 'output', action = 'store_const', const = True, help = "Whether to print the result report to file.")
+parser.add_argument('--outfile', default = './results/report.txt', nargs='?', help = "File to save the result report. Default = './results/report.txt'")
 args = parser.parse_args()
 
 # Get dataset and split into train and test
@@ -52,15 +51,16 @@ train_x, train_y = shuffle(train_x, train_y, random_state = 2333)
 # train_x, test_x, train_y, test_y = train_test_split(data_x, data_y, train_size = args.train_size, shuffle = True, random_state = 2333)
 
 # Expand training dataset
-train_x, train_y = transform.affine_transform(train_x.values.reshape((len(train_x), 28, 28)), train_y)
+# train_x, train_y = transform.affine_transform(train_x.values.reshape((len(train_x), 28, 28)), train_y)
 
 # Scaler and decomposition
-if args.std_scaler:
+if args.normal:
 	scaler = StandardScaler()
 	train_x = scaler.fit_transform(train_x)
 	test_x = scaler.transform(test_x)
 
-pca = PCA(args.pca_percent, whiten = True)
+# pca = PCA(args.pca_percent, whiten = True)
+pca = PCA(args.pca_percent)
 train_x = pca.fit_transform(train_x)
 test_x = pca.transform(test_x)
 
@@ -70,9 +70,9 @@ print('Shape of test dataset: {}'.format(test_x.shape))
 # Create classifiers
 print('\nCreate classifier ...\n' + '*' * 50)
 classifiers = [
-	SVC(C = args.svm_c, kernel = args.svm_kernel, gamma = args.svm_gamma, degree = args.svm_degree, coef0 = args.svm_coef0),
-	# LogisticRegression(C = args.lr_c, solver = args.lr_solver, max_iter = 1000),
-	# KNeighborsClassifier(n_neighbors = args.knn_n)
+	# SVC(C = args.svm_c, kernel = args.svm_kernel, gamma = args.svm_gamma, degree = args.svm_degree, coef0 = args.svm_coef0),
+	# LogisticRegression(C = args.lr_c, solver = args.lr_solver),
+	KNeighborsClassifier(n_neighbors = args.knn_n)
 ]
 
 # Start training
@@ -93,13 +93,13 @@ if args.output:
 	if not os.path.exists(os.path.dirname(args.outfile)):
 	    os.makedirs(os.path.dirname(args.outfile))
 	sys.stdout = open(os.path.splitext(args.outfile)[0] + datetime.now().strftime("_%Y%m%d_%H%M%S") + os.path.splitext(args.outfile)[-1], 'wt')
+print("""Parameters: 
+	normalize: {0},
+	pca_percent: {1}
+	 """.format(args.normal, args.pca_percent))
+print('-' * 50)
 for clf in classifiers:
 	predicted = clf.predict(test_x)
-	print("""Parameters: 
-		std_scaler: {0},
-		pca_percent: {1}
-		 """.format(args.std_scaler, args.pca_percent))
-	print('-' * 50)
 	print('Classification report for classifier %s:\n%s\n'
 	      % (clf, metrics.classification_report(expected, predicted)))
 	print('Accuracy: {0}'.format(metrics.accuracy_score(expected, predicted)))

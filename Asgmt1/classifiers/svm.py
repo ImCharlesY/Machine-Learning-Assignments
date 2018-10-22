@@ -4,7 +4,6 @@
 Script Name     : svm 
 Author          : Charles Young
 Python Version  : Python 3.6.1
-Requirements    : (Please check document: requirements.txt or use command "pip install -r requirements.txt")
 Date            : 2018-10-17
 '''
 
@@ -16,17 +15,20 @@ class svm:
         Simple implementation of a Support Vector Machine using the
         Sequential Minimal Optimization (SMO) algorithm.
     """
-    def __init__(self, max_iter = 10000, kernel = 'rbf', C = 1.0, gamma = 0.05, epsilon = 0.001, random_state = 0):
+    def __init__(self, max_iter = 10000, kernel = 'rbf', C = 1.0, gamma = 0.05, degree = 3, coef0 = 0.0, tol = 1e-3, epsilon = 0.001, random_state = 0):
         self.kernels = {
             'linear' : self.kernel_linear,
-            'quadratic' : self.kernel_quadratic,
-            'rbf' : self.kernel_gaussian
+            'poly' : self.kernel_poly,
+            'rbf' : self.kernel_rbf
         }
 
         self.max_iter = max_iter
         self.kernel = kernel
         self.C = C
         self.gamma = gamma
+        self.degree = degree
+        self.coef0 = coef0
+        self.tol = tol
         self.epsilon = epsilon
 
         self.lben = LabelEncoder()
@@ -49,9 +51,9 @@ class svm:
     """
     def kernel_linear(self, x, xk):
         return np.dot(x, xk)
-    def kernel_quadratic(self, x, xk):
-        return np.dot(x, xk) ** 2
-    def kernel_gaussian(self, x, xk):
+    def kernel_poly(self, x, xk):
+        return np.power((self.gamma * np.dot(x, xk) + self.coef0), self.degree)
+    def kernel_rbf(self, x, xk):
         if len(x) == len(xk):
             return np.exp(- self.gamma * (np.linalg.norm(x - xk) ** 2))
         else:
@@ -112,17 +114,16 @@ class svm:
 
         # Sequential Minimal Optimization (SMO):
         # 1. Initialize all \alpha to zero
-        # 2. Randomly select a pair of \alpha_i and \alpha_j
-        # 3. Calculate the upper and the lower limits of \alpha
-        # 4. Update \alpha_i and \alpha_j:
-        # 5. Update bias
-        # 6. Repeat 2-5 until stop
+        # 2. Select a pair of \alpha_i and \alpha_j
+        # 3. Update \alpha_i and \alpha_j:
+        # 4. Update bias
+        # 5. Repeat 2-4 until stop
 
         # Compute prediction errors
         E_i = self.calc_e(X[i], y[i], self.tmp_alpha, X, y, self.tmp_bias, kernel) 
 
-        if ((y[i] * E_i < -1e-5) and (self.tmp_alpha[i] < self.C)) or \
-            ((y[i] * E_i > 1e-5) and (self.tmp_alpha[i] > 0)):
+        if ((y[i] * E_i < -self.tol) and (self.tmp_alpha[i] < self.C)) or \
+            ((y[i] * E_i > self.tol) and (self.tmp_alpha[i] > 0)):
             j, E_j = self.generate_j(i, E_i)
 
             # Record some variables
@@ -145,7 +146,7 @@ class svm:
             self.tmp_alpha[j] = max(self.tmp_alpha[j], L)
             # Update prediction error
             self.E_cache[j] = self.calc_e(X_j, y_j, self.tmp_alpha, X, y, self.tmp_bias, kernel)   
-            if abs(self.tmp_alpha[j] - alpha_old_j) < 0.00001:
+            if abs(self.tmp_alpha[j] - alpha_old_j) < self.tol:
                 # j not moving enough
                 return 0
             self.tmp_alpha[i] = alpha_old_i + y_i * y_j * (alpha_old_j - self.tmp_alpha[j])
@@ -185,7 +186,7 @@ class svm:
                     alpha_pairs_changed += self.smo_inner(X, y, i, kernel)
                 iter += 1
             if entire_set:
-                entire_set = False  # toggle entire set loop
+                entire_set = False
             elif alpha_pairs_changed == 0:
                 entire_set = True
         return iter, self.tmp_alpha, self.tmp_bias

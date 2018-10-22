@@ -1,10 +1,9 @@
 #!/usr/bin/env
 # -*- coding: utf-8 -*-
 '''
-Script Name     : test_lr
+Script Name     : test_svm
 Author          : Charles Young
 Python Version  : Python 3.6.1
-Requirements    : (Please check document: requirements.txt or use command "pip install -r requirements.txt")
 Date            : 2018-10-17
 '''
 
@@ -29,15 +28,17 @@ from classifiers.svm import svm
 np.set_printoptions(threshold = np.nan)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--data_size', type = float, default = .1, help = "Size of data dataset.")
-parser.add_argument('--std_scaler', type = lambda x: (str(x).lower() == 'true'), default = False, help = "Whether to apply standard scaler before PCA.")
-parser.add_argument('--pca_percent', type = float, default = .8, help = "How much variance in percent to retain by setting number of components in PCA.")
-parser.add_argument('--max_iter', type = int, default = 3000, help = "Maximum number of iter steps.")
-parser.add_argument('--svm_c', type = float, default = 5.0, help = "Parameter C for svm classifier.")
-parser.add_argument('--svm_kernel', default = 'rbf', help = "Kernel used in svm classifier.")
-parser.add_argument('--svm_gamma', type = float, default = .05, help = "Parameter gamma for svm classifier.")
-parser.add_argument('--output', type = lambda x: (str(x).lower() == 'true'), default = False, help = "Whether to print the result report to file.")
-parser.add_argument('--outfile', default = './result/report.txt', help = "File to save the result report.")
+parser.add_argument('--data_size', type = float, default = .1, nargs='?', help = "Size of data dataset. Default = 0.1")
+parser.add_argument('--normalize', dest = 'normal', action = 'store_const', const = True, help = "Whether to normalize the features.")
+parser.add_argument('--pca_percent', type = float, default = .8, nargs='?', help = "How much variance in percent to retain by setting number of components in PCA. Default = 0.8")
+parser.add_argument('--max_iter', type = int, default = 3000, nargs='?', help = "Hard limit on iterations within solver. Default = 3000")
+parser.add_argument('--svm_c', type = float, default = 5.0, nargs='?', help = "Penalty parameter C of the error term. Default = 5.0")
+parser.add_argument('--svm_kernel', default = 'rbf', choices = ['linear', 'poly', 'rbf'], nargs='?', help = "Specifies the kernel type to be used in the algorithm. Default = rbf")
+parser.add_argument('--svm_gamma', type = float, default = .025, nargs='?', help = "Kernel coefficient for ‘rbf’ and ‘poly’. Default = 0.025")
+parser.add_argument('--svm_degree', type = float, default = 9, nargs='?', help = "Degree of the polynomial kernel function (‘poly’). Ignored by all other kernels. Default = 9")
+parser.add_argument('--svm_coef0', type = float, default = 1, nargs='?', help = "Independent term of the polynomial kernel function (‘poly’). Ignored by all other kernels. Default = 1")
+parser.add_argument('--output', dest = 'output', action = 'store_const', const = True, help = "Whether to print the result report to file.")
+parser.add_argument('--outfile', default = './results/report.txt', nargs='?', help = "File to save the result report. Default = './results/report.txt'")
 args = parser.parse_args()
 
 # Get dataset and split into train and test
@@ -53,7 +54,7 @@ test_x = test_x.values[:n_samples]
 test_y = test_y[:n_samples]
 
 # Scaler and decomposition
-if args.std_scaler:
+if args.normal:
 	scaler = StandardScaler()
 	train_x = scaler.fit_transform(train_x)
 	test_x = scaler.transform(test_x)
@@ -67,7 +68,7 @@ print('Shape of test dataset: {}'.format(test_x.shape))
 
 # Create classifiers
 print('\nCreate classifier ...\n' + '*' * 50)
-clf = svm(max_iter = args.max_iter, C = args.svm_c, kernel = args.svm_kernel, gamma = args.svm_gamma)
+clf = svm(max_iter = args.max_iter, C = args.svm_c, kernel = args.svm_kernel, gamma = args.svm_gamma, degree = args.svm_degree, coef0 = args.svm_coef0)
 
 # Start fitting
 print('\nStart fitting ...\n' + '*' * 50)
@@ -89,13 +90,15 @@ if args.output:
 predicted = clf.predict(test_x)
 print("""Arguments: 
 	data_size: {0},
-	std_scaler: {1},
+	normalize: {1},
 	pca_percent: {2},
 	max_iter: {3},
 	svm_C: {4},
 	svm_kernel: {5},
-	svm_gamma: {6}
-	 """.format(args.data_size, args.std_scaler, args.pca_percent, args.max_iter, args.svm_c, args.svm_kernel, args.svm_gamma))
+	svm_gamma: {6},
+	svm_degree: {7},
+	svm_coef0: {8}
+	 """.format(args.data_size, args.normal, args.pca_percent, args.max_iter, args.svm_c, args.svm_kernel, args.svm_gamma, args.svm_degree, args.svm_coef0))
 print('-' * 50)
 print('Classification report for classifier :\n%s\n'
       % (metrics.classification_report(expected, predicted)))

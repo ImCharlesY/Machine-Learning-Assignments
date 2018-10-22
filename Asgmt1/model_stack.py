@@ -1,10 +1,9 @@
 #!/usr/bin/env
 # -*- coding: utf-8 -*-
 '''
-Script Name     : baseline
+Script Name     : model_stack
 Author          : Charles Young
 Python Version  : Python 3.6.1
-Requirements    : (Please check document: requirements.txt or use command "pip install -r requirements.txt")
 Date            : 2018-10-06
 '''
 
@@ -32,16 +31,19 @@ from util import mnist_helper
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--train_size', type = float, default = .9, help = "Size of train dataset.")
-parser.add_argument('--third_clf', type = int, default = 2, choices = [0, 1, 2], help = "Specify which classifier to be the final classifier (0 - svm; 1 - lr; 2 - knn).")
-parser.add_argument('--std_scaler', type = lambda x: (str(x).lower() == 'true'), default = False, help = "Whether to apply standard scaler before PCA.")
-parser.add_argument('--pca_percent', type = float, default = .8, help = "How much variance in percent to retain by setting number of components in PCA.")
-parser.add_argument('--svm_c', type = float, default = 5.0, help = "Parameter C for svm classifier.")
-parser.add_argument('--svm_kernel', default = 'rbf', help = "Kernel used in svm classifier.")
-parser.add_argument('--svm_gamma', type = float, default = .05, help = "Parameter gamma for svm classifier.")
-parser.add_argument('--lr_solver', default = 'lbfgs', help = "Solver for logistic regression.")
-parser.add_argument('--knn_n', type = int, default = 5, help = "Number of neighbors for knn.")
-parser.add_argument('--output', type = lambda x: (str(x).lower() == 'true'), default = False, help = "Whether to print the result report to file.")
-parser.add_argument('--outfile', default = './result/report.txt', help = "File to save the result report.")
+parser.add_argument('--third_clf', type = int, default = 2, choices = [0, 1, 2], nargs='?', help = "Specify which classifier to be the final classifier (0 - svm; 1 - lr; 2 - knn), default = 2")
+parser.add_argument('--normalize', dest = 'normal', action = 'store_const', const = True, help = "Whether to normalize the features.")
+parser.add_argument('--pca_percent', type = float, default = .8, nargs='?', help = "How much variance in percent to retain by setting number of components in PCA. Default = 0.8")
+parser.add_argument('--svm_c', type = float, default = 5.0, nargs='?', help = "Penalty parameter C of the error term. Default = 5.0")
+parser.add_argument('--svm_kernel', default = 'rbf', choices = ['linear', 'poly', 'rbf'], nargs='?', help = "Specifies the kernel type to be used in the algorithm. Default = rbf")
+parser.add_argument('--svm_gamma', type = float, default = .025, nargs='?', help = "Kernel coefficient for ‘rbf’ and ‘poly’. Default = 0.025")
+parser.add_argument('--svm_degree', type = float, default = 9, nargs='?', help = "Degree of the polynomial kernel function (‘poly’). Ignored by all other kernels. Default = 9")
+parser.add_argument('--svm_coef0', type = float, default = 1, nargs='?', help = "Independent term of the polynomial kernel function (‘poly’). Ignored by all other kernels. Default = 1")
+parser.add_argument('--lr_solver', default = 'lbfgs', choices = ['lbfgs'], nargs='?', help = "Solver for logistic regression. Default = lbfgs")
+parser.add_argument('--lr_c', type = float, default = 1.0, nargs='?', help = "Parameter C for svm classifier. Default = 1.0")
+parser.add_argument('--knn_n', type = int, default = 5, nargs='?', help = "Number of neighbors for knn. Default = 5")
+parser.add_argument('--output', dest = 'output', action = 'store_const', const = True, help = "Whether to print the result report to file.")
+parser.add_argument('--outfile', default = './results/report.txt', nargs='?', help = "File to save the result report. Default = './results/report.txt'")
 args = parser.parse_args()
 
 # Get dataset and split into train and test
@@ -50,7 +52,7 @@ train_x, train_y = shuffle(train_x, train_y, random_state = 2333)
 # train_x, test_x, train_y, test_y = train_test_split(data_x, data_y, train_size = args.train_size, shuffle = True, random_state = 2333)
 
 # Scaler and decomposition
-if args.std_scaler:
+if args.normal:
 	scaler = StandardScaler()
 	train_x = scaler.fit_transform(train_x)
 	test_x = scaler.transform(test_x)
@@ -64,7 +66,6 @@ print('Shape of test dataset: {}'.format(test_x.shape))
 
 train_x = pd.DataFrame(data = train_x)
 test_x = pd.DataFrame(data = test_x)
-
 
 def stacking_train(clf_a, clf_b):
 
@@ -116,8 +117,8 @@ def stacking_test(clf_a, clf_b):
 # Create classifiers
 print('\nCreate classifier ...\n' + '*' * 50)
 classifiers = [
-	SVC(C = args.svm_c, kernel = args.svm_kernel, gamma = args.svm_gamma),
-	LogisticRegression(solver = args.lr_solver),
+	SVC(C = args.svm_c, kernel = args.svm_kernel, gamma = args.svm_gamma, degree = args.svm_degree, coef0 = args.svm_coef0),
+	LogisticRegression(C = args.lr_c, solver = args.lr_solver),
 	KNeighborsClassifier(n_neighbors = args.knn_n)
 ]
 
@@ -136,7 +137,7 @@ test_x_stack = stacking_test(classifiers[clf_stack[0]], classifiers[clf_stack[1]
 # Start fitting training dataset with the third classifier
 start_time = dt.datetime.now()
 print('Startfitting training dataset with the third classifier {0} at {1}.'.format(type(classifiers[args.third_clf]).__name__, str(start_time)))
-classifiers[args.third_clf].fit(train_x_stack, train_y)
+classifiers[args.third_clf].fit(train_x_stack.values[:,-2:], train_y)
 end_time = dt.datetime.now()
 print('End fitting at {0}.'.format(str(end_time)))
 print('Duration: {0}'.format(str(end_time - start_time)))
@@ -149,16 +150,15 @@ if args.output:
 	if not os.path.exists(os.path.dirname(args.outfile)):
 	    os.makedirs(os.path.dirname(args.outfile))
 	sys.stdout = open(os.path.splitext(args.outfile)[0] + datetime.now().strftime("_%Y%m%d_%H%M%S") + os.path.splitext(args.outfile)[-1], 'wt')
-predicted = classifiers[args.third_clf].predict(test_x_stack)
-print("""Arguments: 
-	third_clf: {0},
-	std_scaler: {1},
-	pca_percent: {2},
-	svm_c: {3},
-	svm_kernel: {4},
-	svm_gamma: {5},
-	lr_solver: {6},
-	knn_n: {7} """.format(type(classifiers[args.third_clf]).__name__, args.std_scaler, args.pca_percent, args.svm_c, args.svm_kernel, args.svm_gamma, args.lr_solver, args.knn_n))
+predicted = classifiers[args.third_clf].predict(test_x_stack.values[:,-2:])
+print("""Parameters: 
+	normalize: {0},
+	pca_percent: {1}
+	 """.format(args.normal, args.pca_percent))
+print('-' * 50)
+print('Classifier 1 : %s' % (classifiers[clf_stack[0]]))
+print('-' * 50)
+print('Classifier 2 : %s' % (classifiers[clf_stack[1]]))
 print('-' * 50)
 print('Classification report for classifier %s:\n%s\n'
       % (classifiers[args.third_clf], metrics.classification_report(expected, predicted)))
