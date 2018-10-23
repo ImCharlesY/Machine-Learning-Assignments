@@ -8,6 +8,8 @@ Date            : 2018-10-17
 '''
 
 import numpy as np
+import numexpr as ne
+import datetime as dt
 from sklearn.preprocessing import LabelEncoder
 
 class svm:
@@ -15,7 +17,7 @@ class svm:
         Simple implementation of a Support Vector Machine using the
         Sequential Minimal Optimization (SMO) algorithm.
     """
-    def __init__(self, max_iter = 10000, kernel = 'rbf', C = 1.0, gamma = 0.05, degree = 3, coef0 = 0.0, tol = 1e-3, epsilon = 0.001, random_state = 0):
+    def __init__(self, max_iter = 100, kernel = 'rbf', C = 1.0, gamma = 0.05, degree = 3, coef0 = 0.0, tol = 1e-3, epsilon = 0.001, random_state = 0):
         self.kernels = {
             'linear' : self.kernel_linear,
             'poly' : self.kernel_poly,
@@ -43,22 +45,38 @@ class svm:
         self.tmp_alpha = None
         self.tmp_bias = None
         self.E_cache = None
+        self.k_cache = None
 
         np.random.seed(random_state)
 
     """
         Define kernel functions:
     """
-    def kernel_linear(self, x, xk):
-        return np.dot(x, xk)
-    def kernel_poly(self, x, xk):
-        return np.power((self.gamma * np.dot(x, xk) + self.coef0), self.degree)
-    def kernel_rbf(self, x, xk):
+    def kernel_linear(self, xk, x):
+        return np.dot(x, xk.T)
+    def kernel_poly(self, xk, x):
+        return np.power((self.gamma * np.dot(x, xk.T) + self.coef0), self.degree)
+    def kernel_rbf(self, xk, x):
+        # if len(x) == len(xk):
+        #     return np.exp(- self.gamma * (np.linalg.norm(x - xk) ** 2))
+        # else:
+        #     return np.exp(- self.gamma * (np.linalg.norm(x - xk, axis = 1) ** 2))
         if len(x) == len(xk):
-            return np.exp(- self.gamma * (np.linalg.norm(x - xk) ** 2))
+            x_norm = np.einsum('ij,ij->i', x, x)
+            xk_norm = np.einsum('ij,ij->i', xk, xk)
+            return ne.evaluate('exp(-g * (A + B - 2 * C))', {\
+            'A' : x_norm[:,None],\
+            'B' : xk_norm[None,:],\
+            'C' : np.dot(x, xk.T),\
+            'g' : self.gamma })
         else:
-            return np.exp(- self.gamma * (np.linalg.norm(x - xk, axis = 1) ** 2))
-
+            x_norm = np.einsum('ij,ij->i', x, x)
+            xk_norm = np.einsum('i,i->', xk, xk)
+            return ne.evaluate('exp(-g * (A + B - 2 * C))', {\
+            'A' : x_norm,\
+            'B' : xk_norm,\
+            'C' : np.dot(x, xk.T),\
+            'g' : self.gamma })
     """
         Define some help functions:
     """
@@ -71,17 +89,29 @@ class svm:
 
     # Calculate prediction
     def calc_pred(self, test, X, y, alpha, b, kernel):
-        return (alpha * y * kernel(X, test)).sum() + b 
+        # return np.sum((alpha * y * kernel(test, X))) + b 
+        return ne.evaluate('sum(alpha * y * k)', {\
+            'alpha' : alpha,\
+            'y' : y,\
+            'k' : kernel(test, X) }) + b
 
     # Calculate prediction error
-    def calc_e(self, x_k, y_k, alpha, X, y, b, kernel):
-        return self.calc_pred(x_k, X, y, alpha, b, kernel) - y_k
+    # def calc_e(self, x_k, y_k, alpha, X, y, b, kernel):
+    def calc_e(self, k, y_k, alpha, y, b):
+        # return self.calc_pred(x_k, X, y, alpha, b, kernel) - y_k
+        # return np.sum(alpha * y * self.k_cache[k,]) + b - y_k
+        return ne.evaluate('sum(alpha * y * kernel) ', {\
+            'alpha' : alpha,\
+            'y' : y,\
+            'kernel' : self.k_cache[k,] }) + b - y_k     
 
     # Calculate bias
-    def calc_b(self, b, X_i, X_j, y_i, y_j, E_i, E_j, alpha_i, alpha_j, alpha_old_i, alpha_old_j, kernel):
-        b1 = b - E_i - y_i * (alpha_i - alpha_old_i) * (kernel(X_i, X_i)) - y_j * (alpha_j - alpha_old_j) * (kernel(X_i, X_j))
-        b2 = b - E_j - y_i * (alpha_i - alpha_old_i) * (kernel(X_i, X_j)) - y_j * (alpha_j - alpha_old_j) * (kernel(X_j, X_j))
-
+    # def calc_b(self, b, X_i, X_j, y_i, y_j, E_i, E_j, alpha_i, alpha_j, alpha_old_i, alpha_old_j, kernel):
+    def calc_b(self, b, i, j, y_i, y_j, E_i, E_j, alpha_i, alpha_j, alpha_old_i, alpha_old_j):
+        # b1 = b - E_i - y_i * (alpha_i - alpha_old_i) * (kernel(X_i, X_i)) - y_j * (alpha_j - alpha_old_j) * (kernel(X_i, X_j))
+        # b2 = b - E_j - y_i * (alpha_i - alpha_old_i) * (kernel(X_i, X_j)) - y_j * (alpha_j - alpha_old_j) * (kernel(X_j, X_j))
+        b1 = b - E_i - y_i * (alpha_i - alpha_old_i) * self.k_cache[i, i] - y_j * (alpha_j - alpha_old_j) * self.k_cache[i, j]
+        b2 = b - E_j - y_i * (alpha_i - alpha_old_i) * self.k_cache[i, j] - y_j * (alpha_j - alpha_old_j) * self.k_cache[j, j]
         if 0 < alpha_i < self.C:
             tmp_bias = b1
         elif 0 < alpha_j < self.C:
@@ -120,42 +150,44 @@ class svm:
         # 5. Repeat 2-4 until stop
 
         # Compute prediction errors
-        E_i = self.calc_e(X[i], y[i], self.tmp_alpha, X, y, self.tmp_bias, kernel) 
+        # E_i = self.calc_e(X[i], y[i], self.tmp_alpha, X, y, self.tmp_bias, kernel) 
+        E_i = self.calc_e(i, y[i], self.tmp_alpha, y, self.tmp_bias) 
 
         if ((y[i] * E_i < -self.tol) and (self.tmp_alpha[i] < self.C)) or \
             ((y[i] * E_i > self.tol) and (self.tmp_alpha[i] > 0)):
             j, E_j = self.generate_j(i, E_i)
-
-            # Record some variables
-            X_i, X_j, y_i, y_j = X[i,:].copy(), X[j,:].copy(), y[i].copy(), y[j].copy()
+            # Record primary \alpha
             alpha_old_j, alpha_old_i = self.tmp_alpha[j].copy(), self.tmp_alpha[i].copy()
 
             # Compute the upper and lower limits of \alpha
-            (L, H) = self.calc_LH(self.C, alpha_old_j, alpha_old_i, y_j, y_i)
+            (L, H) = self.calc_LH(self.C, alpha_old_j, alpha_old_i, y[j], y[i])
             if L == H:
                 return 0
 
             # Calculate the value of \eta
-            eta = kernel(X_i, X_i) + kernel(X_j, X_j) - 2 * kernel(X_i, X_j)
+            # eta = kernel(X[i], X[i]) + kernel(X[j], X[j]) - 2 * kernel(X[i], X[j])
+            eta = self.k_cache[i,i] + self.k_cache[j,j] - 2 * self.k_cache[i,j]
             if eta <= 0:
                 return 0
 
             # Update \alpha values
-            self.tmp_alpha[j] = alpha_old_j + float(y_j * (E_i - E_j)) / eta
+            self.tmp_alpha[j] = alpha_old_j + float(y[j] * (E_i - E_j)) / eta
             self.tmp_alpha[j] = min(self.tmp_alpha[j], H)
             self.tmp_alpha[j] = max(self.tmp_alpha[j], L)
             # Update prediction error
-            self.E_cache[j] = self.calc_e(X_j, y_j, self.tmp_alpha, X, y, self.tmp_bias, kernel)   
+            # self.E_cache[j] = self.calc_e(X[j], y[j], self.tmp_alpha, X, y, self.tmp_bias, kernel) 
+            self.E_cache[j] = self.calc_e(j, y[j], self.tmp_alpha, y, self.tmp_bias) 
             if abs(self.tmp_alpha[j] - alpha_old_j) < self.tol:
                 # j not moving enough
                 return 0
-            self.tmp_alpha[i] = alpha_old_i + y_i * y_j * (alpha_old_j - self.tmp_alpha[j])
+            self.tmp_alpha[i] = alpha_old_i + y[i] * y[j] * (alpha_old_j - self.tmp_alpha[j])
             # Update prediction error
-            self.E_cache[i] = self.calc_e(X_i, y_i, self.tmp_alpha, X, y, self.tmp_bias, kernel) 
+            # self.E_cache[i] = self.calc_e(X[i], y[i], self.tmp_alpha, X, y, self.tmp_bias, kernel) 
+            self.E_cache[i] = self.calc_e(i, y[i], self.tmp_alpha, y, self.tmp_bias) 
 
             # Compute bias value
-            self.tmp_bias = self.calc_b(self.tmp_bias, X_i, X_j, y_i, y_j, E_i, E_j, self.tmp_alpha[i], self.tmp_alpha[j], alpha_old_i, alpha_old_j, kernel)
-
+            # self.tmp_bias = self.calc_b(self.tmp_bias, X[i], X[j], y[i], y[j], E[i], E[j], self.tmp_alpha[i], self.tmp_alpha[j], alpha_old_i, alpha_old_j, kernel)
+            self.tmp_bias = self.calc_b(self.tmp_bias, i, j, y[i], y[j], E_i, E_j, self.tmp_alpha[i], self.tmp_alpha[j], alpha_old_i, alpha_old_j)
             return 1
 
         else:
@@ -177,8 +209,10 @@ class svm:
         while (iter < self.max_iter) and ((alpha_pairs_changed > 0) or entire_set):
             alpha_pairs_changed = 0
             if entire_set:  # go over all
+                # start_time = dt.datetime.now()
                 for i in range(n_sample):
                     alpha_pairs_changed += self.smo_inner(X, y, i, kernel)
+                # print('Average Time per iter: {0}'.format(str(dt.datetime.now() - start_time)))
                 iter += 1
             else:  # go over non-bound (railed) alphas
                 non_bound_i = np.nonzero((self.tmp_alpha > 0) * (self.tmp_alpha < self.C))[0]
@@ -203,6 +237,10 @@ class svm:
             label_en[label_en == 0] = -1
 
         self.X = features
+        # Calculate kernel values to optimalize the speed of inner loop
+        start_time = dt.datetime.now()
+        self.k_cache = np.apply_along_axis(self.kernels[self.kernel], 1, self.X, self.X)
+        print('Total time of calculation of k_cache: {0}'.format(str(dt.datetime.now() - start_time)))
 
         if self.multclass: # One vs Rest
 

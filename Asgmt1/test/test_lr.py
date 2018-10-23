@@ -32,11 +32,11 @@ parser.add_argument('--pca_percent', type = float, default = .8, nargs='?', help
 parser.add_argument('--steps', type = int, default = 3000, nargs='?', help = "Maximum number of iter steps, default = 3000")
 parser.add_argument('--lr', type = float, default = 5e-5, nargs='?', help = "Learning rate, default = 5e-5")
 parser.add_argument('--output', dest = 'output', action = 'store_const', const = True, help = "Whether to print the result report to file.")
-parser.add_argument('--outfile', default = './results/report.txt', nargs='?', help = "File to save the result report, default = './results/report.txt'")
+parser.add_argument('--outfile', default = '../results/report.txt', nargs='?', help = "File to save the result report, default = './results/report.txt'")
 args = parser.parse_args()
 
 # Get dataset and split into train and test
-train_x, train_y, test_x, test_y = mnist_helper.get_dataset('./data/')
+train_x, train_y, test_x, test_y = mnist_helper.get_dataset('../data/')
 train_x, train_y = shuffle(train_x, train_y, random_state = 2333)
 
 # Get part of raw dataset

@@ -13,6 +13,7 @@ import os
 import shutil
 import struct
 import sys
+import matplotlib.pyplot as plt
 
 try:
 	from urllib.request import urlretrieve
@@ -96,3 +97,11 @@ def get_dataset(gzfdir):
 	test_labels = loadLabels(url_test_labels, num_test_samples, gzfdir)
 	# return pd.concat([train_data, test_data], ignore_index = True), np.hstack((train_labels, test_labels))
 	return train_data, train_labels, test_data, test_labels
+
+
+def disp_digit(features):
+	nfigs = 5
+	fig = plt.figure(figsize=(10,10))
+	for i in range(nfigs ** 2):
+		ax = fig.add_subplot(nfigs, nfigs, i+1)
+		ax.imshow(features[i].reshape(28, 28))

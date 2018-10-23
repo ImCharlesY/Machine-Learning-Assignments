@@ -33,11 +33,11 @@ parser.add_argument('--normalize', dest = 'normal', action = 'store_const', cons
 parser.add_argument('--pca_percent', type = float, default = .8, nargs='?', help = "How much variance in percent to retain by setting number of components in PCA. Default = 0.8")
 parser.add_argument('--knn_n', type = int, default = 5, nargs='?', help = "Number of neighbors for knn. Default = 5")
 parser.add_argument('--output', dest = 'output', action = 'store_const', const = True, help = "Whether to print the result report to file.")
-parser.add_argument('--outfile', default = './results/report.txt', nargs='?', help = "File to save the result report. Default = './results/report.txt'")
+parser.add_argument('--outfile', default = '../results/report.txt', nargs='?', help = "File to save the result report. Default = './results/report.txt'")
 args = parser.parse_args()
 
 # Get dataset and split into train and test
-train_x, train_y, test_x, test_y = mnist_helper.get_dataset('./data/')
+train_x, train_y, test_x, test_y = mnist_helper.get_dataset('../data/')
 train_x, train_y = shuffle(train_x, train_y, random_state = 2333)
 
 # Get part of raw dataset
