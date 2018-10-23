@@ -4,7 +4,7 @@
 Script Name     : test_lr
 Author          : Charles Young
 Python Version  : Python 3.6.1
-Date            : 2018-10-17
+Date            : 2018-10-20
 '''
 
 print(__doc__)
@@ -21,6 +21,8 @@ from sklearn import metrics
 from sklearn.utils import shuffle
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+
+sys.path.insert(0,'..')
 
 from util import mnist_helper
 from classifiers.lr import lr

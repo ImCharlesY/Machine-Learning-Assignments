@@ -27,6 +27,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
 
 from util import mnist_helper
+from util import transform
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--train_size', type = float, default = .9, help = "Size of train dataset.")
@@ -57,6 +58,14 @@ train_y = train_y[:n_samples]
 n_samples = int(args.data_size * test_x.shape[0])
 test_x = test_x.values[:n_samples]
 test_y = test_y[:n_samples]
+
+# Apply deskewing
+train_x = transform.deskew(train_x)
+test_x = transform.deskew(test_x)
+
+# Apply feature extractor
+# train_x = np.hstack((train_x, transform.gethog(train_x)))
+# test_x = np.hstack((test_x, transform.gethog(test_x)))
 
 # Scaler and decomposition
 if args.normal:

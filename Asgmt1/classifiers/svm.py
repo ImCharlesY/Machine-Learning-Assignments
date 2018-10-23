@@ -35,17 +35,19 @@ class svm:
 
         self.lben = LabelEncoder()
 
-        self.X = None
-        self.y = None
+        self.X = None               # Store training features for calculation of kernel
+        self.y = None               # Store training labels for calculation of kernel
+        self.k_cache = None         # Matrix shaped as (samples, samples). Store the values of kernel(X_i, X_j)
 
         self.num_classes = None
 
-        self.alpha = None
+        self.alpha = None           # 
         self.bias = None
+
+        # The following variables store training parameters for a binary classifier during iteration 
         self.tmp_alpha = None
         self.tmp_bias = None
         self.E_cache = None
-        self.k_cache = None
 
         np.random.seed(random_state)
 
@@ -61,6 +63,8 @@ class svm:
         #     return np.exp(- self.gamma * (np.linalg.norm(x - xk) ** 2))
         # else:
         #     return np.exp(- self.gamma * (np.linalg.norm(x - xk, axis = 1) ** 2))
+
+        # Use np.einsum() and ne.evaluate() methods to implement calculation parallelly 
         if len(x) == len(xk):
             x_norm = np.einsum('ij,ij->i', x, x)
             xk_norm = np.einsum('ij,ij->i', xk, xk)
@@ -77,6 +81,7 @@ class svm:
             'B' : xk_norm,\
             'C' : np.dot(x, xk.T),\
             'g' : self.gamma })
+
     """
         Define some help functions:
     """
@@ -121,7 +126,7 @@ class svm:
         self.E_cache -= self.tmp_bias - tmp_bias # Update error cache
         return tmp_bias
 
-    # given \alpha_i, generate the best \alpha_j
+    # Given \alpha_i, generate the best \alpha_j
     def generate_j(self, i, Ei):
         self.E_cache[i] = Ei
 
@@ -137,10 +142,8 @@ class svm:
     """
     # SMO inner loop
     def smo_inner(self, X, y, i, kernel):
-        """
-        The inner loop of SMO algorithm
-        :return: whether changed alpha values. 0 = unchanged, 1 = changed (go to function smo to see why)
-        """
+        # The inner loop of SMO algorithm
+        # Return: whether changed alpha values. 0 = unchanged, 1 = changed (go to function smo to see why)
 
         # Sequential Minimal Optimization (SMO):
         # 1. Initialize all \alpha to zero
@@ -225,25 +228,39 @@ class svm:
                 entire_set = True
         return iter, self.tmp_alpha, self.tmp_bias
 
-    def fit(self, features, target):
-        label_en = self.lben.fit_transform(target.flatten())
+    def fit(self, features, targets):
+        # Parameters:
+        #   features -- np.ndarray: 
+        #       input features matrix shaped as (samples, features)
+        #   targets -- np.ndarray:
+        #       input labels vector shaped as (samples,) 
+        # Return:
+        #   None
 
+        # Fit a label encoder
+        label_en = self.lben.fit_transform(targets.flatten())
+
+        # Get unique label set and calc the number of classes
         labelSet = np.unique(label_en)
         self.num_classes = len(labelSet)
 
-        if self.num_classes > 2:
-            self.multclass = True
-        else:
+        # After encoding by LabelEncoder, the labels are set to [0-num_class]
+        # If binary class, change the labels of samples belonging to negative class to -1
+        if self.num_classes <= 2:
             label_en[label_en == 0] = -1
 
+        # Store training features for kernel calculation
         self.X = features
-        # Calculate kernel values to optimalize the speed of inner loop
+
+        # Calculate kernel values in advance to optimalize the speed of inner loop
         start_time = dt.datetime.now()
         self.k_cache = np.apply_along_axis(self.kernels[self.kernel], 1, self.X, self.X)
         print('Total time of calculation of k_cache: {0}'.format(str(dt.datetime.now() - start_time)))
 
-        if self.multclass: # One vs Rest
+        # If multiclass, apply one vs rest method
+        if self.num_classes > 2:
 
+            # helper func to generate labels for each binary classifier
             def labelBinarize(labels, labelSet):
                 newLabels = np.tile(labels, [len(labelSet), 1])
                 for idx in range(len(labelSet)):
@@ -254,6 +271,7 @@ class svm:
             # Generate labels for each binary classifier
             label_matrix = labelBinarize(label_en, labelSet)
 
+            # Store training labels for kernel calculation
             self.y = label_matrix
 
             self.alpha = []
@@ -261,6 +279,7 @@ class svm:
 
             # Fitting each classifier
             for n_class in range(self.num_classes):
+                # Initialize error cache
                 self.E_cache = (-label_matrix[n_class,]).astype('float64')
                 it, alpha, bias = self.fit_binary(features, label_matrix[n_class,])
                 self.alpha.append(alpha)
@@ -270,7 +289,9 @@ class svm:
             self.bias = np.array(self.bias)
 
         else:
+            # Store training labels for kernel calculation
             self.y = label_en
+            # Initialize error cache
             self.E_cache = (-label_en).astype('float64')
             it, self.alpha, self.bias = self.fit_binary(features, label_en)
 
@@ -287,13 +308,13 @@ class svm:
         if features.shape[1] != self.X.shape[1]:
             raise "The dimension of the input data is not matched to the pre-trained model."
 
-        # If multiclass, vote
+        # If multiclass, apply all classifiers to a sample and calc the mean of all the predictions
         if self.alpha.ndim == 2:
             predictions = np.zeros((self.num_classes, features.shape[0]))
             for n_class in range(self.num_classes):
                 predictions[n_class,] = self.predict_binary(features, self.X, self.y[n_class,], self.alpha[n_class, ], self.bias[n_class], self.kernels[self.kernel])
                 tmpmin = np.abs(predictions[n_class,].min())
-                predictions[n_class,] += tmpmin
+                predictions[n_class,] += tmpmin                 # adjust to prevent divide by 0
             predictions /= predictions.sum(axis = 1)[:, None]
             return predictions.T
         # else if binary class
@@ -301,6 +322,12 @@ class svm:
             return self.predict_binary(features, self.X, self.y, self.alpha, self.bias, self.kernels[self.kernel])
         
     def predict(self, features):
+        # Parameters:
+        #   features -- np.ndarray: 
+        #       input features matrix shaped as (samples, features)
+        # Return:
+        #   predictions -- np.ndarray:
+        
         predictions = self.predict_prob(features)
         # If multiclass, choose the label with the largest prob
         if self.alpha.ndim == 2:

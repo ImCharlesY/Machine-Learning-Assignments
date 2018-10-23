@@ -1,7 +1,7 @@
 #!/usr/bin/env
 # -*- coding: utf-8 -*-
 '''
-Script Name     : lr
+Script Name     : knn
 Author          : Charles Young
 Python Version  : Python 3.6.1
 Date            : 2018-10-17

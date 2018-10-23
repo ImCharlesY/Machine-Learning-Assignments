@@ -4,7 +4,7 @@
 Script Name     : baseline_custom
 Author          : Charles Young
 Python Version  : Python 3.6.1
-Date            : 2018-10-06
+Date            : 2018-10-19
 '''
 print(__doc__)
 
@@ -30,6 +30,7 @@ from classifiers.lr import lr
 from classifiers.knn import KNN
 
 from util import mnist_helper
+from util import transform
 
 parser = argparse.ArgumentParser()
 # parser.add_argument('--train_size', type = float, default = .9, help = "Size of train dataset.")
@@ -61,6 +62,14 @@ n_samples = int(args.data_size * test_x.shape[0])
 test_x = test_x.values[:n_samples]
 test_y = test_y[:n_samples]
 
+# Apply deskewing
+train_x = transform.deskew(train_x)
+test_x = transform.deskew(test_x)
+
+# Apply feature extractor
+# train_x = np.hstack((train_x, transform.gethog(train_x)))
+# test_x = np.hstack((test_x, transform.gethog(test_x)))
+
 # Scaler and decomposition
 if args.normal:
 	scaler = StandardScaler()
@@ -80,11 +89,6 @@ test_x2 = pca2.transform(test_x)
 
 print('Shape of train dataset: {}'.format(train_x.shape))
 print('Shape of test dataset: {}'.format(test_x.shape))
-
-# train_x1 = pd.DataFrame(data = train_x1)
-# test_x1 = pd.DataFrame(data = test_x1)
-# train_x2 = pd.DataFrame(data = train_x2)
-# test_x2 = pd.DataFrame(data = test_x2)
 
 # Create classifiers
 print('\nCreate classifier ...\n' + '*' * 50)
