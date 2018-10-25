@@ -5,3 +5,4 @@ pillow
 matplotlib>=2.1.1
 scikit-learn>=0.19.0
 opencv-python>=3.1.0
+seaborn
