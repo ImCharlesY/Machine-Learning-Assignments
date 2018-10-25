@@ -1,10 +1,10 @@
 #!/usr/bin/env
 # -*- coding: utf-8 -*-
 '''
-Script Name     : mnist_helper
+Script Name     : show
 Author          : Charles Young
 Python Version  : Python 3.6.1
-Date            : 2018-10-06
+Date            : 2018-10-23
 '''
 print(__doc__)
 

@@ -64,8 +64,8 @@ train_x = transform.deskew(train_x)
 test_x = transform.deskew(test_x)
 
 # Apply feature extractor
-# train_x = np.hstack((train_x, transform.gethog(train_x)))
-# test_x = np.hstack((test_x, transform.gethog(test_x)))
+# train_x = transform.gethog(train_x)
+# test_x = transform.gethog(test_x)
 
 # Scaler and decomposition
 if args.normal:
