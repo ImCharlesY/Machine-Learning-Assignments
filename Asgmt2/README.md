@@ -1,4 +1,4 @@
-# Assignment 2 : Convolutional Neural Network
+﻿# Assignment 2 : Convolutional Neural Network
  
  This repository contains project code for Machine Learning Lesson (EE369). 
  This code is based on [kuangliu's repository](https://github.com/kuangliu/pytorch-cifar) and use [pytorch-summary](https://github.com/sksq96/pytorch-summary). Here we apply some famous convolutional neural networks (CNN) and perform them on CIFAR-10 dataset. We also test the influence of [Random-Erasing-Data-Augmentation](https://arxiv.org/abs/1708.04896).
@@ -37,7 +37,8 @@ Install the requirements:
 conda install pip
 pip install -r requirements.txt
 git clone https://github.com/sksq96/pytorch-summary
-python pytorch-summary/setup.py install
+cd pytorch-summary
+python setup.py install
 ```
 
 or
@@ -46,7 +47,8 @@ or
 conda install matplolib
 conda install pytorch==0.4.1 torchvision -c pytorch
 git clone https://github.com/sksq96/pytorch-summary
-python pytorch-summary/setup.py install
+cd pytorch-summary
+python setup.py install
 ```
 
 If everything works well, you can run `python main.py` without any other arguments for default to train a LeNet on CIFAR-10. 
