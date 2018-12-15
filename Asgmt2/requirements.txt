@@ -1,0 +1,5 @@
+numpy
+matplotlib
+torch==0.4.1
+torchvision
+opencv
