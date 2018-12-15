@@ -26,7 +26,7 @@ from utils import transforms
 from utils.load_dataset import load_dataset
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-d', default='./data', nargs='?', help='directory to store dataset. Default \'./data\'')z
+parser.add_argument('-d', default='./data', nargs='?', help='directory to store dataset. Default \'./data\'')
 parser.add_argument('--pca_percent', type = float, default = .8, nargs='?', help = "How much variance in percent to retain by setting number of components in PCA. Default = 0.8")
 parser.add_argument('--svm_c', type = float, default = 5.0, nargs='?', help = "Penalty parameter C of the error term. Default = 5.0")
 parser.add_argument('--svm_kernel', default = 'rbf', choices = ['linear', 'poly', 'rbf'], nargs='?', help = "Specifies the kernel type to be used in the algorithm. Default = rbf")
